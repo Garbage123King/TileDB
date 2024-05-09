@@ -37,7 +37,6 @@
 #include <string>
 #include <vector>
 #include "context.h"
-#include "tiledb_experimental.h"
 #include "vfs.h"
 
 namespace tiledb {
