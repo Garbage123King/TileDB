@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/platform.h"
@@ -71,6 +72,8 @@ struct ConsolidationFx {
   // Encryption parameters
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
   const char* encryption_key_ = nullptr;
+
+  bool serialize_ = false;
 
   // Constructors/destructors
   ConsolidationFx();
@@ -5081,6 +5084,10 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #1",
     "[capi][consolidation][adv][adv-1][non-rest]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+#endif
+
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5112,6 +5119,13 @@ TEST_CASE_METHOD(
       config, "sm.consolidation.buffer_size", "10000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
+
+  if (serialize_) {
+    std::vector<std::string> frag_uris_deserialized;
+    tiledb_array_consolidation_request_wrapper(
+        ctx_, tiledb_serialization_type_t(0), nullptr, &frag_uris_deserialized);
+    REQUIRE(frag_uris_deserialized.empty());
+  }
 
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, dense_vector_uri_.c_str(), config);
@@ -7158,7 +7172,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense split fragments",
-    "[capi][consolidation][dense][split-fragments][non-rest]") {
+    "[capi][consolidation][dense][split-fragments][rest]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+#endif
+
   remove_dense_array();
   create_dense_array();
   write_dense_subarray(1, 2, 1, 2);
@@ -7198,6 +7216,23 @@ TEST_CASE_METHOD(
 
   // Consolidate
   const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+
+  if (serialize_) {
+    std::vector<std::string> frag_uris;
+    frag_uris.reserve(2);
+    for (uint64_t i = 0; i < 2; i++) {
+      frag_uris.emplace_back(uris[i]);
+    }
+
+    std::vector<std::string> frag_uris_deserialized;
+    tiledb_array_consolidation_request_wrapper(
+        ctx_,
+        tiledb_serialization_type_t(0),
+        &frag_uris,
+        &frag_uris_deserialized);
+    REQUIRE(frag_uris == frag_uris_deserialized);
+  }
+
   rc = tiledb_array_consolidate_fragments(
       ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
   CHECK(rc == TILEDB_OK);
@@ -7234,7 +7269,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse split fragments",
-    "[capi][consolidation][sparse][split-fragments][non-rest]") {
+    "[capi][consolidation][sparse][split-fragments][rest]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+#endif
+
   remove_sparse_array();
   create_sparse_array();
   write_sparse_row(0);
@@ -7274,6 +7313,23 @@ TEST_CASE_METHOD(
 
   // Consolidate
   const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+
+  if (serialize_) {
+    std::vector<std::string> frag_uris;
+    frag_uris.reserve(2);
+    for (uint64_t i = 0; i < 2; i++) {
+      frag_uris.emplace_back(uris[i]);
+    }
+
+    std::vector<std::string> frag_uris_deserialized;
+    tiledb_array_consolidation_request_wrapper(
+        ctx_,
+        tiledb_serialization_type_t(0),
+        &frag_uris,
+        &frag_uris_deserialized);
+    REQUIRE(frag_uris == frag_uris_deserialized);
+  }
+
   rc = tiledb_array_consolidate_fragments(
       ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
   CHECK(rc == TILEDB_OK);

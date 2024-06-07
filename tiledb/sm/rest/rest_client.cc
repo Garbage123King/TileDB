@@ -1580,10 +1580,12 @@ Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
 }
 
 Status RestClient::post_consolidation_to_rest(
-    const URI& uri, const Config& config) {
+    const URI& uri,
+    const Config& config,
+    const std::vector<std::string>* fragment_uris) {
   Buffer buff;
-  RETURN_NOT_OK(serialization::array_consolidation_request_serialize(
-      config, serialization_type_, &buff));
+  serialization::array_consolidation_request_serialize(
+      config, fragment_uris, serialization_type_, &buff);
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
@@ -1838,7 +1840,8 @@ void RestClient::delete_group_from_rest(const URI&, bool) {
   throw RestClientDisabledException();
 }
 
-Status RestClient::post_consolidation_to_rest(const URI&, const Config&) {
+Status RestClient::post_consolidation_to_rest(
+    const URI&, const Config&, const std::vector<std::string>*) {
   throw RestClientDisabledException();
 }
 
