@@ -325,7 +325,7 @@ Status GlobalOrderWriter::check_coord_dups() const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -369,13 +369,9 @@ Status GlobalOrderWriter::check_coord_dups() const {
           std::stringstream ss;
           ss << "Duplicate coordinates " << coords_to_str(i);
           ss << " are not allowed";
-          return Status_WriterError(ss.str());
+          throw GlobalOrderWriterStatusException(ss.str());
         }
-
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -422,7 +418,7 @@ Status GlobalOrderWriter::check_global_order() const {
   }
 
   // Check if all coordinates are in global order in parallel
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
@@ -439,12 +435,9 @@ Status GlobalOrderWriter::check_global_order() const {
           ss << " in the global order";
           if (tile_cmp > 0)
             ss << " due to writes across tiles";
-          return Status_WriterError(ss.str());
+          throw GlobalOrderWriterStatusException(ss.str());
         }
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK(status);
 
   // Save the last cell's coordinates.
   auto last_cell_coords{
@@ -473,7 +466,7 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
   }
 
   // Check if all coordinates are in hilbert order in parallel
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
@@ -483,12 +476,9 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
           ss << "Write failed; Coordinates " << coords_to_str(i);
           ss << " succeed " << coords_to_str(i + 1);
           ss << " in the hilbert order";
-          return Status_WriterError(ss.str());
+          throw GlobalOrderWriterStatusException(ss.str());
         }
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK(status);
 
   // Save the last hilbert value
   global_write_state_->last_hilbert_value_ =
@@ -571,7 +561,7 @@ Status GlobalOrderWriter::compute_coord_dups(
   }
 
   std::mutex mtx;
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -615,11 +605,7 @@ Status GlobalOrderWriter::compute_coord_dups(
           std::lock_guard<std::mutex> lock(mtx);
           coord_dups->insert(i);
         }
-
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -868,16 +854,13 @@ Status GlobalOrderWriter::prepare_full_tiles(
   }
 
   auto num = buffers_.size();
-  auto status = parallel_for(&resources_.compute_tp(), 0, num, [&](uint64_t i) {
+  parallel_for(&resources_.compute_tp(), 0, num, [&](uint64_t i) {
     auto buff_it = buffers_.begin();
     std::advance(buff_it, i);
     const auto& name = buff_it->first;
     throw_if_not_ok(prepare_full_tiles(name, coord_dups, &tiles->at(name)));
     this->throw_if_cancellation_requested();
-    return Status::Ok();
   });
-
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }

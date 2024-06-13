@@ -119,48 +119,38 @@ OpenedArray::load_delete_and_update_conditions() {
   auto conditions = std::vector<QueryCondition>(locations.size());
   auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
 
-  auto status = parallel_for(
-      &resources_.compute_tp(), 0, locations.size(), [&](size_t i) {
-        // Get condition marker.
-        auto& uri = locations[i].uri();
+  parallel_for(&resources_.compute_tp(), 0, locations.size(), [&](size_t i) {
+    // Get condition marker.
+    auto& uri = locations[i].uri();
 
-        // Read the condition from storage.
-        auto tile = GenericTileIO::load(
-            resources_,
-            uri,
-            locations[i].offset(),
-            *(encryption_key()),
-            resources_.ephemeral_memory_tracker());
+    // Read the condition from storage.
+    auto tile = GenericTileIO::load(
+        resources_,
+        uri,
+        locations[i].offset(),
+        *(encryption_key()),
+        resources_.ephemeral_memory_tracker());
 
-        if (tiledb::sm::utils::parse::ends_with(
-                locations[i].condition_marker(),
-                tiledb::sm::constants::delete_file_suffix)) {
-          conditions[i] = tiledb::sm::deletes_and_updates::serialization::
-              deserialize_condition(
-                  i,
-                  locations[i].condition_marker(),
-                  tile->data(),
-                  tile->size());
-        } else if (tiledb::sm::utils::parse::ends_with(
-                       locations[i].condition_marker(),
-                       tiledb::sm::constants::update_file_suffix)) {
-          auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
-              deserialize_update_condition_and_values(
-                  i,
-                  locations[i].condition_marker(),
-                  tile->data(),
-                  tile->size());
-          conditions[i] = std::move(cond);
-          update_values[i] = std::move(uvs);
-        } else {
-          throw ArrayException("Unknown condition marker extension");
-        }
+    if (tiledb::sm::utils::parse::ends_with(
+            locations[i].condition_marker(),
+            tiledb::sm::constants::delete_file_suffix)) {
+      conditions[i] =
+          tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+              i, locations[i].condition_marker(), tile->data(), tile->size());
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   locations[i].condition_marker(),
+                   tiledb::sm::constants::update_file_suffix)) {
+      auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
+          deserialize_update_condition_and_values(
+              i, locations[i].condition_marker(), tile->data(), tile->size());
+      conditions[i] = std::move(cond);
+      update_values[i] = std::move(uvs);
+    } else {
+      throw ArrayException("Unknown condition marker extension");
+    }
 
-        throw_if_not_ok(conditions[i].check(array_schema_latest()));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
-
+    throw_if_not_ok(conditions[i].check(array_schema_latest()));
+  });
   return {Status::Ok(), conditions, update_values};
 }
 
@@ -738,16 +728,14 @@ void Array::delete_fragments(
 
   // Delete fragments and commits
   auto vfs = &(resources.vfs());
-  throw_if_not_ok(parallel_for(
-      &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-        throw_if_not_ok(vfs->remove_dir(fragment_uris[i].uri_));
-        bool is_file = false;
-        throw_if_not_ok(vfs->is_file(commit_uris_to_delete[i], &is_file));
-        if (is_file) {
-          throw_if_not_ok(vfs->remove_file(commit_uris_to_delete[i]));
-        }
-        return Status::Ok();
-      }));
+  parallel_for(&resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
+    throw_if_not_ok(vfs->remove_dir(fragment_uris[i].uri_));
+    bool is_file = false;
+    throw_if_not_ok(vfs->is_file(commit_uris_to_delete[i], &is_file));
+    if (is_file) {
+      throw_if_not_ok(vfs->remove_file(commit_uris_to_delete[i]));
+    }
+  });
 }
 
 void Array::delete_fragments(
@@ -1755,7 +1743,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 
   // Load all metadata for tile var sizes among fragments.
   for (const auto& var_name : var_names) {
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         &resources_.compute_tp(),
         0,
         fragment_metadata.size(),
@@ -1764,17 +1752,16 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
           // evolution that do not exists in this fragment.
           const auto& schema = fragment_metadata[f]->array_schema();
           if (!schema->is_field(var_name)) {
-            return Status::Ok();
+            return;
           }
 
           fragment_metadata[f]->loaded_metadata()->load_tile_var_sizes(
               *encryption_key(), var_name);
-          return Status::Ok();
-        }));
+        });
   }
 
   // Now compute for each var size names, the average cell size.
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 0, var_names.size(), [&](const uint64_t n) {
         uint64_t total_size = 0;
         uint64_t cell_num = 0;
@@ -1800,9 +1787,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 
         uint64_t average_cell_size = total_size / cell_num;
         ret[var_name] = std::max<uint64_t>(average_cell_size, 1);
-
-        return Status::Ok();
-      }));
+      });
 
   return ret;
 }
@@ -2032,15 +2017,12 @@ void Array::do_load_metadata() {
 
   auto metadata_num = array_metadata_to_load.size();
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(
-      parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
-        const auto& uri = array_metadata_to_load[m].uri_;
+  parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
+    const auto& uri = array_metadata_to_load[m].uri_;
 
-        metadata_tiles[m] = GenericTileIO::load(
-            resources_, uri, 0, *encryption_key(), memory_tracker_);
-
-        return Status::Ok();
-      }));
+    metadata_tiles[m] = GenericTileIO::load(
+        resources_, uri, 0, *encryption_key(), memory_tracker_);
+  });
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;

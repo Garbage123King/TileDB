@@ -100,24 +100,24 @@ RelevantFragments RelevantFragmentGenerator::compute_relevant_fragments(
   auto fragment_num = array_->fragment_metadata().size();
 
   // Populate the fragment bytemap for each dimension in parallel.
-  throw_if_not_ok(parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
+  parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
     if (subarray_.is_default(d))
-      return Status::Ok();
+      return;
 
-    return compute_relevant_fragments_for_dim(
+    compute_relevant_fragments_for_dim(
         compute_tp,
         d,
         fragment_num,
         start_coords_,
         end_coords_,
         &fragment_bytemaps_[d]);
-  }));
+  });
 
   // Recalculate relevant fragments.
   return RelevantFragments(dim_num, fragment_num, fragment_bytemaps_);
 }
 
-Status RelevantFragmentGenerator::compute_relevant_fragments_for_dim(
+void RelevantFragmentGenerator::compute_relevant_fragments_for_dim(
     ThreadPool* const compute_tp,
     const dimension_size_type dim_idx,
     const size_t fragment_num,
@@ -127,11 +127,11 @@ Status RelevantFragmentGenerator::compute_relevant_fragments_for_dim(
   const auto meta = array_->fragment_metadata();
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
 
-  return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
+  parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
     // We're done when we have already determined fragment `f` to
     // be relevant for this dimension.
     if ((*frag_bytemap)[f] == 1) {
-      return Status::Ok();
+      return;
     }
 
     // The fragment `f` is relevant to this dimension's fragment bytemap
@@ -146,8 +146,6 @@ Status RelevantFragmentGenerator::compute_relevant_fragments_for_dim(
         break;
       }
     }
-
-    return Status::Ok();
   });
 }
 

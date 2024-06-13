@@ -111,7 +111,7 @@ class RelevantFragmentGenerator {
    * @param end_coords The ending range coordinates to compute between.
    * @param frag_bytemap The fragment bytemap to mutate.
    */
-  Status compute_relevant_fragments_for_dim(
+  void compute_relevant_fragments_for_dim(
       ThreadPool* compute_tp,
       dimension_size_type dim_idx,
       size_t fragment_num,

@@ -76,13 +76,10 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
         , tile_subarrays_(t_end - t_start, subarray.dim_num())
         , result_space_tiles_(std::move(result_space_tiles)) {
       auto& tile_coords = subarray.tile_coords();
-      throw_if_not_ok(
-          parallel_for(&compute_tp, 0, tile_subarrays_.size(), [&](uint64_t t) {
-            subarray.crop_to_tile(
-                tile_subarrays_[t],
-                (const DimType*)&tile_coords[t + t_start][0]);
-            return Status::Ok();
-          }));
+      parallel_for(&compute_tp, 0, tile_subarrays_.size(), [&](uint64_t t) {
+        subarray.crop_to_tile(
+            tile_subarrays_[t], (const DimType*)&tile_coords[t + t_start][0]);
+      });
     };
 
     DISABLE_COPY_AND_COPY_ASSIGN(IterationTileData);
