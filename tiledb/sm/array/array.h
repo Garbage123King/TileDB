@@ -218,12 +218,9 @@ class OpenedArray {
   /**
    * Loads the delete and update conditions from storage.
    *
-   * @return Status, vector of the conditions, vector of the update values.
+   * @return vector of the conditions, vector of the update values.
    */
-  tuple<
-      Status,
-      optional<std::vector<QueryCondition>>,
-      optional<std::vector<std::vector<UpdateValue>>>>
+  tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
   load_delete_and_update_conditions();
 
  private:

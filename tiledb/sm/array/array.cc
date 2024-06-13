@@ -110,10 +110,7 @@ Array::Array(
 /*                API                */
 /* ********************************* */
 
-tuple<
-    Status,
-    optional<std::vector<QueryCondition>>,
-    optional<std::vector<std::vector<UpdateValue>>>>
+tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
 OpenedArray::load_delete_and_update_conditions() {
   auto& locations = array_directory().delete_and_update_tiles_location();
   auto conditions = std::vector<QueryCondition>(locations.size());
@@ -151,7 +148,7 @@ OpenedArray::load_delete_and_update_conditions() {
 
     throw_if_not_ok(conditions[i].check(array_schema_latest()));
   });
-  return {Status::Ok(), conditions, update_values};
+  return {conditions, update_values};
 }
 
 Status Array::evolve_array_schema(
