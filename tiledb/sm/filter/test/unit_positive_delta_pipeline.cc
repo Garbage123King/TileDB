@@ -123,7 +123,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(!pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    CHECK_THROWS(throw_if_not_ok(
+        pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp)));
   }
 }
 
@@ -277,9 +278,8 @@ TEST_CASE(
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(
-        !pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-             .ok());
+    CHECK_THROWS(throw_if_not_ok(pipeline.run_forward(
+        &dummy_stats, tile.get(), offsets_tile.get(), &tp)));
   }
 
   WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);

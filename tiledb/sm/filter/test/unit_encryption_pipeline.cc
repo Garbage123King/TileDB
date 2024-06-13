@@ -54,7 +54,8 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     pipeline.add_filter(EncryptionAES256GCMFilter(Datatype::UINT64));
 
     // No key set
-    CHECK(!pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    CHECK_THROWS(throw_if_not_ok(
+        pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp)));
 
     // Create and set a key
     char key[32];
