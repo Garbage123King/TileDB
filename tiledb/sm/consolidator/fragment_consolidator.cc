@@ -670,6 +670,7 @@ Status FragmentConsolidator::create_queries(
   query_r = tdb_unique_ptr<Query>(tdb_new(
       Query,
       resources_,
+      CancellationSource(storage_manager_),
       storage_manager_,
       array_for_reads,
       nullopt,
@@ -701,6 +702,7 @@ Status FragmentConsolidator::create_queries(
   query_w = tdb_unique_ptr<Query>(tdb_new(
       Query,
       resources_,
+      CancellationSource(storage_manager_),
       storage_manager_,
       array_for_writes,
       fragment_name,

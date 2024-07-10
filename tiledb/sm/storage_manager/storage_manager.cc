@@ -143,7 +143,7 @@ Status StorageManagerCanonical::async_push_query(Query* query) {
         // Task was cancelled. This is safe to perform in a separate thread,
         // as we are guaranteed by the thread pool not to have entered
         // query->process() yet.
-        throw_if_not_ok(query->cancel());
+        query->cancel();
       });
 
   return Status::Ok();
@@ -177,7 +177,7 @@ Status StorageManagerCanonical::cancel_all_tasks() {
   return Status::Ok();
 }
 
-bool StorageManagerCanonical::cancellation_in_progress() {
+bool StorageManagerCanonical::cancellation_in_progress() const {
   std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
   return cancellation_in_progress_;
 }
