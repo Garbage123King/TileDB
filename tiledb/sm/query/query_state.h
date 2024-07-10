@@ -237,8 +237,11 @@ constexpr size_t n_local_query_events = 4;
  *   - Transitions in state caused by events.
  */
 class LocalQueryStateMachine {
-  using enum LocalQueryState;
-  using enum LocalQueryEvent;
+  /*
+   * Compensate for GCC 10
+   */
+  // using enum LocalQueryState;
+  using LQS = LocalQueryState;
 
   /**
    * Mutex assure atomicity of state transition
@@ -339,7 +342,7 @@ class LocalQueryStateMachine {
    * Predicate that the machine is in a cancelled state
    */
   bool is_cancelled() const {
-    return state() == cancelled;
+    return state() == LQS::cancelled;
   }
 };
 
