@@ -59,7 +59,12 @@ using transition_table_row = LocalQueryState[n_local_query_events];
  */
 using transition_table = transition_table_row[n_local_query_states];
 
-using enum LocalQueryState;
+/*
+ * GCC 10 does not support `using enum`, which would allow omitting all the
+ * qualifiers in the transition table. Instead, we make do with a shorter alias.
+ */
+// using enum LocalQueryState;
+using LQS = LocalQueryState;
 
 /**
  * Transition table for `LocalQueryStateMachine`
@@ -67,52 +72,53 @@ using enum LocalQueryState;
 constexpr transition_table local_query_tt{
     // uninitialized
     {
-        everything_else,  // ready
-        success,    // finish. In due course this should be `error`, since it
-                    // should be impossible to complete a query without
-                    // initializing it.
-        aborted,    // abort,
-        cancelled,  // cancel
+        LQS::everything_else,  // ready
+        LQS::success,  // finish. In due course this should be `error`, since it
+                       // should be impossible to complete a query without
+                       // initializing it.
+        LQS::aborted,  // abort
+        LQS::cancelled,  // cancel
     },
     // everything_else
     {
-        everything_else,  // ready
-        success,          // finish
-        aborted,          // abort,
-        cancelled,        // cancel
+        LQS::everything_else,  // ready
+        LQS::success,          // finish
+        LQS::aborted,          // abort
+        LQS::cancelled,        // cancel
     },
     // success
     {
-        success,  // ready
-        success,  // finish. Arguably this might be `error`, since it's already
-                  // finished once already.
-        error,    // abort. There should be no occasion where a successful query
-                  // aborts after completion.
-        success,  // cancel. Cancelling a successful query has no effect.
-                  // There's no longer any pending activity to cancel.
+        LQS::success,  // ready
+        LQS::success,  // finish. Arguably this might be `error`, since it's
+                       // already finished once already.
+        LQS::error,    // abort. There should be no occasion where a successful
+                       // query aborts after completion.
+        LQS::success,  // cancel. Cancelling a successful query has no effect.
+                       // There's no longer any pending activity to cancel.
     },
     // aborted
     {
-        aborted,  // ready
-        error,    // finish. It's an error to try to complete an aborted query.
-        aborted,  // abort. Self-transition is intentional
-        aborted,  // cancel. Cancelling an aborted query has no effect. There's
-                  // no longer any pending activity to cancel.
+        LQS::aborted,  // ready
+        LQS::error,    // finish. It's an error to try to complete an aborted
+                       // query.
+        LQS::aborted,  // abort. Self-transition is intentional
+        LQS::aborted,  // cancel. Cancelling an aborted query has no effect.
+                       // There's no longer any pending activity to cancel.
     },
     // cancelled
     {
-        cancelled,  // ready
-        error,      // finish. You can't complete a cancelled query.
-        error,      // abort. A cancelled query shouldn't be doing anything that
-                    // would give rise to an `abort`.
-        cancelled,  // cancel
+        LQS::cancelled,  // ready
+        LQS::error,      // finish. You can't complete a cancelled query.
+        LQS::error,      // abort. A cancelled query shouldn't be doing anything
+                         // that would give rise to an `abort`.
+        LQS::cancelled,  // cancel
     },
     // error
     {
-        error,  // ready
-        error,  // finish
-        error,  // abort,
-        error,  // cancel
+        LQS::error,  // ready
+        LQS::error,  // finish
+        LQS::error,  // abort,
+        LQS::error,  // cancel
     },
 };
 
